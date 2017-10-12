@@ -53,7 +53,7 @@
 		"repo-reinstall": "npm run repo-reset && npm install",
 		"build": "npm run code-compile",
 		"compile": "npm run code-compile",
-		"prepublishOnly": "npm run dist",
+		"prepublishOnly": "npm run code-build",
 		"reinstall": "npm run repo-reinstall"
 	}
 }
