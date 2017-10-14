@@ -11,7 +11,10 @@
 	},
 	"main": "dist/index.js",
 	"module": "index.js",
-	"files": ["dist", "src"],
+	"files": [
+		"dist",
+		"src"
+	],
 	"engines": {
 		"node": ">=8.6.0"
 	},
@@ -47,8 +50,7 @@
 		"test-cover-clean": "rimraf .nyc_output && rimraf coverage && rimraf coverage.lcov",
 		"test-cover-html": "nyc report --reporter=lcov",
 		"test-cover-lcov": "nyc report --reporter=text-lcov > coverage.lcov",
-		"test-cover-upload":
-			"npm run test-cover-lcov && codecov --token=971c44c6-cb14-4890-989a-d5058c17e374",
+		"test-cover-upload": "npm run test-cover-lcov && codecov --token=971c44c6-cb14-4890-989a-d5058c17e374",
 		"repo-reset": "npm run code-clean && npm run test-cover-clean && rimraf node_modules",
 		"repo-reinstall": "npm run repo-reset && npm install",
 		"build": "npm run code-compile",
