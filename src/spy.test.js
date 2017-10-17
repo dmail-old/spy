@@ -10,7 +10,7 @@ test("spy.js", ({ ensure }) => {
 		assert.equal(typeof createSpy(), "function")
 	})
 
-	ensure("spy.getCall() returns object with call information", () => {
+	ensure("spy.getReport() returns object with call information", () => {
 		let calledWith = null
 		const returnValue = {}
 		const spy = createSpy((...args) => {
@@ -19,13 +19,13 @@ test("spy.js", ({ ensure }) => {
 		})
 		const thisValue = {}
 		const args = [0, 1]
-		const uncalledCall = spy.getCall(0)
+		let report = spy.getReport(0)
 
-		assert.deepEqual(uncalledCall, {
-			absoluteOrder: undefined,
+		assert.deepEqual(report, {
 			msCreated: Date.now(),
 			msCalled: undefined,
 			called: false,
+			absoluteOrder: undefined,
 			thisValue: undefined,
 			argValues: undefined,
 			returnValue: undefined
@@ -34,14 +34,14 @@ test("spy.js", ({ ensure }) => {
 		const ellapsedMs = 10
 		clock.tick(ellapsedMs)
 		spy.apply(thisValue, args)
-		const calledCall = spy.getCall(0)
+		report = spy.getReport(0)
 
 		assert.deepEqual(calledWith, args)
-		assert.deepEqual(calledCall, {
-			absoluteOrder: 1, // kinda risky but it works as long a noting is calling a spy before this one
-			msCreated: Date.now(),
-			msCalled: calledCall.msCreated + ellapsedMs,
+		assert.deepEqual(report, {
+			msCreated: Date.now() - ellapsedMs,
+			msCalled: report.msCreated + ellapsedMs,
 			called: true,
+			absoluteOrder: 1, // kinda risky but it works as long a noting is calling a spy before this one
 			thisValue,
 			argValues: args,
 			returnValue
@@ -55,9 +55,9 @@ test("spy.js", ({ ensure }) => {
 		const spyOnAnonymousFn = createSpy(() => {})
 		assert.equal(spyOnAnonymousFn.toString(), "anonymous spy")
 
-		const namedFunciton = () => {}
-		const spyOnNamedFunction = createSpy(namedFunciton)
-		assert.equal(spyOnNamedFunction.toString(), "named spy")
+		const namedFunction = () => {}
+		const spyOnNamedFunction = createSpy(namedFunction)
+		assert.equal(spyOnNamedFunction.toString(), "namedFunction spy")
 
 		const spyNamed = createSpy("foo")
 		assert.equal(spyNamed.toString(), "foo spy")
@@ -78,8 +78,8 @@ test("spy.js", ({ ensure }) => {
 		spy()
 		spy()
 
-		const firstCall = spy.getCall(0)
-		const secondCall = spy.getCall(1)
+		const firstCall = spy.getReport(0)
+		const secondCall = spy.getReport(1)
 
 		assert(firstCall.absoluteOrder < secondCall.absoluteOrder)
 	})
@@ -113,14 +113,14 @@ test("spy.js", ({ ensure }) => {
 		})
 	})
 
-	ensure("spy.getCalls() returns only called tracker reports", () => {
+	ensure("spy.getCalledReports() returns only called tracker reports", () => {
 		const spy = createSpy()
 
 		spy.track(0)
 		spy.track(1)
 		spy()
 
-		assert.equal(spy.getCalls().length, 1)
+		assert.equal(spy.getCalledReports().length, 1)
 	})
 
 	ensure("spy.getCallCount() returns amount of calls", () => {
@@ -134,22 +134,22 @@ test("spy.js", ({ ensure }) => {
 		assert.equal(spy.getCallCount(), 1)
 	})
 
-	ensure("spy.getFirstCall() returns the first call report, called or not", () => {
+	ensure("spy.getFirstCalledReport() returns the first call report, called or not", () => {
 		const spy = createSpy()
-		assert.equal(spy.getFirstCall().called, false)
+		assert.equal(spy.getFirstCalledReport(), null)
 		spy()
-		assert.equal(spy.getFirstCall().called, true)
+		assert.equal(spy.getFirstCalledReport().called, true)
 	})
 
-	ensure("spy.getLastCall() returns the last called report", () => {
+	ensure("spy.getLastCalledReport() returns the last called report", () => {
 		const spy = createSpy()
 		spy.track(0)
 		spy.track(1)
 		spy.track(2)
-		assert.equal(spy.getLastCall().called, false)
+		assert.equal(spy.getLastCalledReport(), null)
 		spy("a")
 		spy("b")
-		assert.equal(spy.getLastCall().argValues[0], "b")
+		assert.equal(spy.getLastCalledReport().argValues[0], "b")
 	})
 
 	clock.uninstall()

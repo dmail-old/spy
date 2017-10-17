@@ -86,7 +86,7 @@ export const createSpy = firstArg => {
 		prepareNextTracker()
 
 		const thisValue = this
-		const argValues = arguments
+		const argValues = Array.prototype.slice.call(arguments)
 		let returnValue
 		if (fn && typeof fn === "function") {
 			returnValue = fn.apply(thisValue, argValues)
@@ -110,12 +110,12 @@ export const createSpy = firstArg => {
 		trackers[index] = tracker
 		return tracker
 	}
-	const getCalls = () =>
-		trackers.map(({ createReport }) => createReport()).filter(({ called }) => called)
-	const getCall = index => getCalls()[index]
-	const getCallCount = () => getCalls().length
-	const getFirstCall = () => getCalls()[0] || trackers[0].createReport()
-	const getLastCall = () => getCalls().reverse()[0] || trackers[0].createReport()
+	const getReports = () => trackers.map(({ createReport }) => createReport())
+	const getReport = index => trackers[index].createReport()
+	const getCalledReports = () => getReports().filter(({ called }) => called)
+	const getCallCount = () => getCalledReports().length
+	const getFirstCalledReport = () => getCalledReports()[0] || null
+	const getLastCalledReport = () => getCalledReports().reverse()[0] || null
 	prepareNextTracker = () => {
 		trackerIndex++
 		track(trackerIndex)
@@ -132,11 +132,12 @@ export const createSpy = firstArg => {
 		toString,
 		call,
 		track,
+		getReport,
+		getReports,
+		getCalledReports,
 		getCallCount,
-		getCall,
-		getFirstCall,
-		getLastCall,
-		getCalls
+		getFirstCalledReport,
+		getLastCalledReport
 	})
 
 	return spy
