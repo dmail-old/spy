@@ -1,128 +1,156 @@
+import { test } from "@dmail/test-cheap"
 import assert from "assert"
-
+import { install } from "lolex"
 import { createSpy } from "./spy.js"
 
-let someHasFailed = false
-const ensure = (description, fn) => {
-	process.stdout.write(`${description}: `)
-	const returnValue = fn()
-	if (returnValue === false) {
-		someHasFailed = true
-		process.stdout.write("failed\n")
-	} else {
-		process.stdout.write("passed\n")
-	}
-}
+test("spy.js", ({ ensure }) => {
+	const clock = install()
 
-ensure("spy is a function", () => {
-	assert.equal(typeof createSpy(), "function")
-})
-
-ensure("calling spy create a call", () => {
-	const spy = createSpy()
-	const thisValue = {}
-	const args = [0, 1]
-	spy.apply(thisValue, args)
-	const call = spy.getCall(0)
-
-	assert(call.wasCalled())
-	assert.equal(call.getThis(), thisValue)
-	assert.deepEqual(call.getArguments(), args)
-	assert.equal(typeof call.getDuration(), "number")
-})
-
-ensure("calling spy call underlying function and return its returnvalue", () => {
-	let calledWith = null
-	const returnValue = {}
-	const spy = createSpy((...args) => {
-		calledWith = args
-		return returnValue
+	ensure("spy is a function", () => {
+		assert.equal(typeof createSpy(), "function")
 	})
-	const args = [0, 1]
-	const spyReturnValue = spy(...args)
-	assert.deepEqual(calledWith, args)
-	assert.equal(spyReturnValue, returnValue)
 
-	const call = spy.getCall(0)
-	assert.equal(call.getValue(), returnValue)
-})
+	ensure("spy.getCall() returns object with call information", () => {
+		let calledWith = null
+		const returnValue = {}
+		const spy = createSpy((...args) => {
+			calledWith = args
+			return returnValue
+		})
+		const thisValue = {}
+		const args = [0, 1]
+		const uncalledCall = spy.getCall(0)
 
-ensure("spy toString", () => {
-	const anonymousSpy = createSpy()
-	assert.equal(anonymousSpy.toString(), "anonymous spy")
+		assert.deepEqual(uncalledCall, {
+			absoluteOrder: undefined,
+			msCreated: Date.now(),
+			msCalled: undefined,
+			called: false,
+			thisValue: undefined,
+			argValues: undefined,
+			returnValue: undefined
+		})
 
-	const spyOnAnonymousFn = createSpy(() => {})
-	assert.equal(spyOnAnonymousFn.toString(), "anonymous spy")
+		const ellapsedMs = 10
+		clock.tick(ellapsedMs)
+		spy.apply(thisValue, args)
+		const calledCall = spy.getCall(0)
 
-	const named = () => {}
-	const spyOnNamedFunction = createSpy(named)
-	assert.equal(spyOnNamedFunction.toString(), "named spy")
-})
-
-ensure("call.toString", () => {
-	const spy = createSpy()
-
-	assert.equal(spy.getOrCreateAbstractCall(0).toString(), "anonymous spy first call")
-	assert.equal(spy.getOrCreateAbstractCall(1).toString(), "anonymous spy second call")
-	assert.equal(spy.getOrCreateAbstractCall(2).toString(), "anonymous spy third call")
-	assert.equal(spy.getOrCreateAbstractCall(3).toString(), "anonymous spy call n°4")
-})
-
-ensure("compare two call order", () => {
-	const spy = createSpy()
-	const firstCall = spy.getOrCreateAbstractCall(0)
-	const secondCall = spy.getOrCreateAbstractCall(1)
-
-	spy()
-	spy()
-
-	assert.equal(firstCall.wasCalledBefore(secondCall), false)
-	assert.equal(secondCall.wasCalledBefore(firstCall), true)
-})
-
-ensure("register fn when a call gets called", () => {
-	const spy = createSpy()
-	const firstCall = spy.getOrCreateAbstractCall(0)
-	let notified = false
-	firstCall.whenCalled(() => {
-		notified = true
+		assert.deepEqual(calledWith, args)
+		assert.deepEqual(calledCall, {
+			absoluteOrder: 1, // kinda risky but it works as long a noting is calling a spy before this one
+			msCreated: Date.now(),
+			msCalled: calledCall.msCreated + ellapsedMs,
+			called: true,
+			thisValue,
+			argValues: args,
+			returnValue
+		})
 	})
-	assert.equal(notified, false)
-	spy()
-	assert.equal(notified, true)
-	let notifiedImmediatly = false
-	firstCall.whenCalled(() => {
-		notifiedImmediatly = true
+
+	ensure("spy.toString()", () => {
+		const anonymousSpy = createSpy()
+		assert.equal(anonymousSpy.toString(), "anonymous spy")
+
+		const spyOnAnonymousFn = createSpy(() => {})
+		assert.equal(spyOnAnonymousFn.toString(), "anonymous spy")
+
+		const namedFunciton = () => {}
+		const spyOnNamedFunction = createSpy(namedFunciton)
+		assert.equal(spyOnNamedFunction.toString(), "named spy")
+
+		const spyNamed = createSpy("foo")
+		assert.equal(spyNamed.toString(), "foo spy")
 	})
-	assert.equal(notifiedImmediatly, true)
-})
 
-ensure("call throw when concretized more than once", () => {
-	const spy = createSpy()
-	spy()
-	const call = spy.getCall(0)
+	ensure("tracker.toString()", () => {
+		const spy = createSpy()
 
-	assert.throws(() => {
-		call.concretize()
+		assert.equal(spy.track(0).toString(), "anonymous spy first call")
+		assert.equal(spy.track(1).toString(), "anonymous spy second call")
+		assert.equal(spy.track(2).toString(), "anonymous spy third call")
+		assert.equal(spy.track(3).toString(), "anonymous spy call n°4")
 	})
+
+	ensure("compare two call order", () => {
+		const spy = createSpy()
+
+		spy()
+		spy()
+
+		const firstCall = spy.getCall(0)
+		const secondCall = spy.getCall(1)
+
+		assert(firstCall.absoluteOrder < secondCall.absoluteOrder)
+	})
+
+	ensure("tracker.whenCalled(fn) calls fn as soon as call occurs", () => {
+		const spy = createSpy()
+		const firstCallTracker = spy.track(0)
+		let call
+		firstCallTracker.whenCalled(report => {
+			call = report
+		})
+		assert.equal(call, undefined)
+		spy()
+		assert.equal(call.called, true)
+
+		let immediateCall
+		firstCallTracker.whenCalled(report => {
+			immediateCall = report
+		})
+		assert.equal(immediateCall.called, true)
+		assert(call !== immediateCall)
+	})
+
+	ensure("tracker.notify() throws when called more than once", () => {
+		const spy = createSpy()
+		spy()
+		const tracker = spy.track(0)
+
+		assert.throws(() => {
+			tracker.notify()
+		})
+	})
+
+	ensure("spy.getCalls() returns only called tracker reports", () => {
+		const spy = createSpy()
+
+		spy.track(0)
+		spy.track(1)
+		spy()
+
+		assert.equal(spy.getCalls().length, 1)
+	})
+
+	ensure("spy.getCallCount() returns amount of calls", () => {
+		const spy = createSpy()
+
+		spy.track(0)
+		spy.track(1)
+
+		assert.equal(spy.getCallCount(), 0)
+		spy()
+		assert.equal(spy.getCallCount(), 1)
+	})
+
+	ensure("spy.getFirstCall() returns the first call report, called or not", () => {
+		const spy = createSpy()
+		assert.equal(spy.getFirstCall().called, false)
+		spy()
+		assert.equal(spy.getFirstCall().called, true)
+	})
+
+	ensure("spy.getLastCall() returns the last called report", () => {
+		const spy = createSpy()
+		spy.track(0)
+		spy.track(1)
+		spy.track(2)
+		assert.equal(spy.getLastCall().called, false)
+		spy("a")
+		spy("b")
+		assert.equal(spy.getLastCall().argValues[0], "b")
+	})
+
+	clock.uninstall()
 })
-
-ensure("getCalls/getCallCount/getFirstCall/getLastCall returns only called abtrasct call", () => {
-	const spy = createSpy()
-	const firstCall = spy.getOrCreateAbstractCall(0)
-	const secondCall = spy.getOrCreateAbstractCall(1)
-
-	assert.equal(spy.getCallCount(), 0)
-	assert.equal(spy.getFirstCall(), firstCall)
-	assert.equal(spy.getLastCall(), firstCall)
-
-	spy()
-	spy()
-	spy.getOrCreateAbstractCall(3)
-
-	assert.equal(spy.getCallCount(), 2)
-	assert.equal(spy.getFirstCall(), firstCall)
-	assert.equal(spy.getLastCall(), secondCall)
-})
-
-process.exit(someHasFailed ? 1 : 0)
