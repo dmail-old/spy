@@ -1,7 +1,7 @@
 import { test } from "@dmail/test-cheap"
 import assert from "assert"
 import { install } from "lolex"
-import { createSpy } from "./spy.js"
+import { createSpy, installSpy } from "./spy.js"
 
 test("spy.js", ({ ensure }) => {
 	const clock = install()
@@ -150,6 +150,26 @@ test("spy.js", ({ ensure }) => {
 		spy("a")
 		spy("b")
 		assert.equal(spy.getLastCalledReport().argValues[0], "b")
+	})
+
+	ensure("installSpy", () => {
+		const spy = createSpy()
+		const object = {}
+		const property = "name"
+		const previousValue = 1
+		object[property] = previousValue
+		installSpy(spy, object, property, () => {
+			assert.equal(object[property], spy)
+		})
+		assert.equal(object[property], previousValue)
+
+		const otherObject = {}
+		assert.throws(() => {
+			installSpy(spy, otherObject, property, () => {
+				throw new Error()
+			})
+		})
+		assert.equal(property in otherObject, false)
 	})
 
 	clock.uninstall()

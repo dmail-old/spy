@@ -142,3 +142,38 @@ export const createSpy = firstArg => {
 
 	return spy
 }
+
+export const createPropertyHelpers = object => {
+	const hasProperty = name => object.hasOwnProperty(name)
+	const getProperty = name => object[name]
+	const setProperty = (name, value) => {
+		const has = hasProperty(name)
+		const old = has ? getProperty(name) : undefined
+		object[name] = value
+		const restoreProperty = () => {
+			if (has) {
+				object[name] = old
+			} else {
+				delete object[name]
+			}
+		}
+		return restoreProperty
+	}
+
+	return {
+		has: hasProperty,
+		get: getProperty,
+		set: setProperty
+	}
+}
+
+export const installSpy = (spy, object, name, fn) => {
+	const { set } = createPropertyHelpers(object)
+	const restore = set(name, spy)
+
+	try {
+		fn()
+	} finally {
+		restore()
+	}
+}
