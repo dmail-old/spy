@@ -25,6 +25,7 @@ const createTracker = (spy, index) => {
 		}
 		return `${spy} call n°${index + 1}`
 	}
+
 	const createReport = () => ({
 		msCreated,
 		msCalled,
@@ -32,15 +33,17 @@ const createTracker = (spy, index) => {
 		absoluteOrder,
 		thisValue,
 		argValues,
-		returnValue
+		returnValue,
 	})
-	const whenCalled = fn => {
+
+	const whenCalled = (fn) => {
 		if (called) {
 			return fn(createReport())
 		}
 		calledCallbacks.push(fn)
 	}
-	const notify = data => {
+
+	const notify = (data) => {
 		if (called) {
 			throw new Error("can be concretized only once")
 		}
@@ -52,7 +55,7 @@ const createTracker = (spy, index) => {
 		absoluteOrder = id
 		;({ thisValue, argValues, returnValue } = data)
 
-		calledCallbacks.forEach(calledCallback => calledCallback(createReport()))
+		calledCallbacks.forEach((calledCallback) => calledCallback(createReport()))
 		calledCallbacks.length = 0
 	}
 
@@ -60,13 +63,13 @@ const createTracker = (spy, index) => {
 		toString,
 		createReport,
 		whenCalled,
-		notify
+		notify,
 	})
 
 	return tracker
 }
 
-export const createSpy = firstArg => {
+export const createSpy = (firstArg) => {
 	let name
 	let fn
 	if (typeof firstArg === "string") {
@@ -76,6 +79,11 @@ export const createSpy = firstArg => {
 		name = firstArg.name || "anonymous"
 	} else {
 		name = "anonymous"
+	}
+
+	const calledCallbacks = []
+	const whenCalled = (callback) => {
+		calledCallbacks.push(callback)
 	}
 
 	const trackers = []
@@ -94,15 +102,18 @@ export const createSpy = firstArg => {
 		tracker.notify({
 			thisValue,
 			argValues,
-			returnValue
+			returnValue,
 		})
+		calledCallbacks.forEach((callback) => callback(tracker))
 
 		return returnValue
 	}
+
 	const spy = function() {
 		return call.apply(this, arguments)
 	}
-	const track = index => {
+
+	const track = (index) => {
 		if (index in trackers) {
 			return trackers[index]
 		}
@@ -110,12 +121,19 @@ export const createSpy = firstArg => {
 		trackers[index] = tracker
 		return tracker
 	}
+
 	const getReports = () => trackers.map(({ createReport }) => createReport())
-	const getReport = index => trackers[index].createReport()
+
+	const getReport = (index) => trackers[index].createReport()
+
 	const getCalledReports = () => getReports().filter(({ called }) => called)
+
 	const getCallCount = () => getCalledReports().length
+
 	const getFirstCalledReport = () => getCalledReports()[0] || null
+
 	const getLastCalledReport = () => getCalledReports().reverse()[0] || null
+
 	prepareNextTracker = () => {
 		trackerIndex++
 		track(trackerIndex)
@@ -137,19 +155,23 @@ export const createSpy = firstArg => {
 		getCalledReports,
 		getCallCount,
 		getFirstCalledReport,
-		getLastCalledReport
+		getLastCalledReport,
+		whenCalled,
 	})
 
 	return spy
 }
 
-export const createPropertyHelpers = object => {
-	const hasProperty = name => object.hasOwnProperty(name)
-	const getProperty = name => object[name]
+export const createPropertyHelpers = (object) => {
+	const hasProperty = (name) => object.hasOwnProperty(name)
+
+	const getProperty = (name) => object[name]
+
 	const setProperty = (name, value) => {
 		const has = hasProperty(name)
 		const old = has ? getProperty(name) : undefined
 		object[name] = value
+
 		const restoreProperty = () => {
 			if (has) {
 				object[name] = old
@@ -157,13 +179,14 @@ export const createPropertyHelpers = object => {
 				delete object[name]
 			}
 		}
+
 		return restoreProperty
 	}
 
 	return {
 		has: hasProperty,
 		get: getProperty,
-		set: setProperty
+		set: setProperty,
 	}
 }
 

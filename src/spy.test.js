@@ -1,16 +1,15 @@
+import { createSpy, installSpy } from "./spy.js"
 import { test } from "@dmail/test-cheap"
 import assert from "assert"
 import { install } from "lolex"
-import { createSpy, installSpy } from "./spy.js"
 
 test("spy.js", ({ ensure }) => {
-	const clock = install()
-
 	ensure("spy is a function", () => {
 		assert.equal(typeof createSpy(), "function")
 	})
 
 	ensure("spy.getReport() returns object with call information", () => {
+		const clock = install()
 		let calledWith = null
 		const returnValue = {}
 		const spy = createSpy((...args) => {
@@ -28,7 +27,7 @@ test("spy.js", ({ ensure }) => {
 			absoluteOrder: undefined,
 			thisValue: undefined,
 			argValues: undefined,
-			returnValue: undefined
+			returnValue: undefined,
 		})
 
 		const ellapsedMs = 10
@@ -44,8 +43,10 @@ test("spy.js", ({ ensure }) => {
 			absoluteOrder: 1, // kinda risky but it works as long a noting is calling a spy before this one
 			thisValue,
 			argValues: args,
-			returnValue
+			returnValue,
 		})
+
+		clock.uninstall()
 	})
 
 	ensure("spy.toString()", () => {
@@ -88,7 +89,7 @@ test("spy.js", ({ ensure }) => {
 		const spy = createSpy()
 		const firstCallTracker = spy.track(0)
 		let call
-		firstCallTracker.whenCalled(report => {
+		firstCallTracker.whenCalled((report) => {
 			call = report
 		})
 		assert.equal(call, undefined)
@@ -96,7 +97,7 @@ test("spy.js", ({ ensure }) => {
 		assert.equal(call.called, true)
 
 		let immediateCall
-		firstCallTracker.whenCalled(report => {
+		firstCallTracker.whenCalled((report) => {
 			immediateCall = report
 		})
 		assert.equal(immediateCall.called, true)
@@ -172,5 +173,14 @@ test("spy.js", ({ ensure }) => {
 		assert.equal(property in otherObject, false)
 	})
 
-	clock.uninstall()
+	ensure("spy.whenCalled", () => {
+		const spy = createSpy()
+		let tracker
+		spy.whenCalled((arg) => {
+			tracker = arg
+		})
+		assert.equal(tracker, undefined)
+		spy()
+		assert.equal(typeof tracker, "object")
+	})
 })
